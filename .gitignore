@@ -1,7 +1,7 @@
-# These files stay on the laptop only (contain DB credentials).
-# They are NOT pushed to GitHub.
+# Laptop-only files (contain DB credentials / local logs) — never pushed to GitHub.
 fetch_push.js
 run_fetch.bat
+sync_log.txt
 
-# Node modules (if you npm install locally)
+# Node modules
 node_modules/
