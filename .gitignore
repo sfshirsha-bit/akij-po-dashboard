@@ -1,0 +1,7 @@
+# These files stay on the laptop only (contain DB credentials).
+# They are NOT pushed to GitHub.
+fetch_push.js
+run_fetch.bat
+
+# Node modules (if you npm install locally)
+node_modules/

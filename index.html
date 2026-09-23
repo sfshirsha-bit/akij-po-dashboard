@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shuchita Faruque Shirsha | PO Dashboard | iBOS ERP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,system-ui,sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh}
+.header{background:linear-gradient(135deg,#1e293b,#1a1a3e);border-bottom:2px solid #334155;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.header h1{font-size:1.3rem;color:#818cf8}
+.header .sub{font-size:0.75rem;color:#94a3b8}
+.banner{background:linear-gradient(90deg,#1e1a4a,#1a2e4a,#1e1a4a);padding:12px 24px;border-bottom:1px solid #334155;font-size:0.8rem;color:#94a3b8;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.banner b{color:#e2e8f0}
+.banner .stale{color:#fbbf24;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;padding:12px 24px}
+.stat-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;text-align:center}
+.stat-card .value{font-size:1.5rem;font-weight:800}
+.stat-card .label{font-size:0.6rem;color:#94a3b8;text-transform:uppercase;margin-top:3px}
+.s-total .value{color:#818cf8}.s-credit .value{color:#4ade80}.s-cash .value{color:#fbbf24}
+.s-app .value{color:#38bdf8}.s-pend .value{color:#f87171}.s-grn .value{color:#a78bfa}.s-grnp .value{color:#fb923c}
+.tabs{display:flex;gap:0;padding:0 24px;border-bottom:2px solid #334155;background:#0f1a2e}
+.tab{padding:9px 16px;font-size:0.78rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:#94a3b8;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab.active{color:#818cf8;border-bottom-color:#818cf8}
+.content{padding:12px 24px 20px}
+.tab-content{display:none}.tab-content.active{display:block}
+.section{background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden}
+.section h2{font-size:0.85rem;color:#818cf8;padding:10px 14px;background:#111a2e;border-bottom:1px solid #334155;display:flex;justify-content:space-between}
+.filters{display:flex;gap:6px;padding:6px 14px;background:#111a2e;flex-wrap:wrap;align-items:center}
+.filters select,.filters input{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:5px;font-size:0.68rem}
+.filters input:focus,.filters select:focus{outline:none;border-color:#818cf8}
+.filters label{font-size:0.68rem;color:#94a3b8}
+.table-wrap{overflow-x:auto;max-height:65vh;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:0.68rem}
+th{background:#111a2e;color:#818cf8;padding:6px 8px;text-align:left;font-weight:600;font-size:0.62rem;text-transform:uppercase;white-space:nowrap;position:sticky;top:0;z-index:1}
+td{padding:5px 8px;border-bottom:1px solid #1e2e50}
+tr:hover{background:#1a2940}
+.badge{display:inline-block;padding:1px 5px;border-radius:6px;font-size:0.58rem;font-weight:700}
+.b-a{background:#064e3b;color:#4ade80}.b-p{background:#78350f;color:#fbbf24}
+.b-grn{background:#0e3a5c;color:#38bdf8}.b-nogrn{background:#7f1d1d;color:#fca5a5}
+.b-cre{background:#0e3a5c;color:#38bdf8}.b-csh{background:#7c2d12;color:#fbbf24}
+.pagination{display:flex;justify-content:center;gap:3px;padding:6px;background:#111a2e;flex-wrap:wrap;align-items:center}
+.pagination button{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:0.65rem}
+.pagination button.active{background:#818cf8;color:#fff}
+.pagination .info{font-size:0.65rem;color:#94a3b8;margin:0 8px}
+.footer{text-align:center;padding:12px;color:#475569;font-size:0.6rem;border-top:1px solid #1e293b}
+</style>
+</head>
+<body>
+<div class="header">
+  <div><h1>&#128451; iBOS ERP - PO Dashboard</h1><div class="sub">Shuchita Faruque Shirsha | Officer - Supply Chain & Operations</div></div>
+</div>
+<div class="banner" id="banner">Loading data...</div>
+<div class="stats" id="stats">Loading...</div>
+<div class="tabs">
+  <button class="tab active" data-tab="all">&#128203; All POs</button>
+  <button class="tab" data-tab="credit">&#128722; Credit</button>
+  <button class="tab" data-tab="cash">&#128184; Cash/Advance</button>
+  <button class="tab" data-tab="sbu">&#127970; SBU Summary</button>
+</div>
+<div class="content">
+  <div id="tab-all" class="tab-content active"></div>
+  <div id="tab-credit" class="tab-content"></div>
+  <div id="tab-cash" class="tab-content"></div>
+  <div id="tab-sbu" class="tab-content"></div>
+</div>
+<div class="footer">Data refreshed from iBOS DWH via GitHub sync &bull; <span id="genTime"></span></div>
+
+<script>
+var DATA = null;
+var page = 0, pageSize = 100;
+var sbuNames = {};
+
+function fmt(n){
+  n = Math.round(n);
+  if (Math.abs(n) >= 100000000) return (n/10000000).toFixed(1) + ' Cr';
+  if (Math.abs(n) >= 100000) return (n/100000).toFixed(1) + ' L';
+  if (Math.abs(n) >= 1000) return (n/1000).toFixed(1) + 'K';
+  return n;
+}
+
+async function load(){
+  try {
+    var r = await fetch('po_data.json', {cache:'no-store'});
+    if (!r.ok) throw new Error(r.status);
+    DATA = await r.json();
+    render();
+  } catch(e) {
+    document.getElementById('banner').innerHTML = '<span class="stale">Error loading data: ' + e.message + '</span>';
+    document.getElementById('stats').textContent = '';
+  }
+}
+
+function render(){
+  var st = DATA.stats;
+  var updated = new Date(DATA.lastUpdated);
+  var ageMin = Math.round((Date.now() - updated) / 60000);
+  var ageTxt = ageMin < 2 ? 'just now' : ageMin < 60 ? ageMin + ' min ago' : Math.round(ageMin/60) + ' hr ago';
+  var stale = ageMin > 120 ? '<span class="stale">&#9888; ' + ageTxt + ' (laptop not synced)</span>' : ageTxt + ' ago';
+
+  document.getElementById('banner').innerHTML =
+    '<b>' + st.total + ' POs</b> &bull; Credit <b>' + st.credit + '</b> &bull; Cash/Adv <b>' + st.cash + '</b> &bull; Approved <b>' + st.approved + '</b> &bull; GRN Done <b>' + st.grnDone + '</b> &bull; GRN Pending <b>' + st.grnPending + '</b> &bull; <span class="stale">Updated ' + ageTxt + '</span>';
+
+  document.getElementById('stats').innerHTML =
+    '<div class="stat-card s-total"><div class="value">' + st.total + '</div><div class="label">Total POs</div></div>' +
+    '<div class="stat-card s-credit"><div class="value">' + st.credit + '</div><div class="label">Credit</div></div>' +
+    '<div class="stat-card s-cash"><div class="value">' + st.cash + '</div><div class="label">Cash/Adv</div></div>' +
+    '<div class="stat-card s-app"><div class="value">' + st.approved + '</div><div class="label">Approved</div></div>' +
+    '<div class="stat-card s-pend"><div class="value">' + st.pending + '</div><div class="label">Pending</div></div>' +
+    '<div class="stat-card s-grn"><div class="value">' + st.grnDone + '</div><div class="label">GRN Done</div></div>' +
+    '<div class="stat-card s-grnp"><div class="value">' + st.grnPending + '</div><div class="label">GRN Pending</div></div>' +
+    '<div class="stat-card s-total"><div class="value">' + fmt(st.totalAmount) + '</div><div class="label">Total Value (BDT)</div></div>';
+
+  DATA.sbu.forEach(s => { sbuNames[s.code] = s.name; });
+
+  buildPOTab('all');
+  buildPOTab('credit');
+  buildPOTab('cash');
+  buildSBUTab();
+  switchTab('all');
+}
+
+function buildPOTab(type){
+  var data = DATA.pos;
+  if (type === 'credit') data = DATA.pos.filter(p => p.type === 'credit');
+  else if (type === 'cash') data = DATA.pos.filter(p => p.type === 'cash');
+
+  var sbus = [...new Set(data.map(p => p.sbu))].sort();
+  var cols = type === 'all'
+    ? '<th>PO#</th><th>SBU</th><th>Plant</th><th>Warehouse</th><th>Date</th><th>Ord</th><th>Ref</th><th>Pay</th><th>Adv%</th><th>App</th><th>Supplier</th><th>Value (BDT)</th><th>GRN Qty</th><th>Exp Qty</th><th>GRN%</th>'
+    : type === 'credit'
+    ? '<th>PO#</th><th>SBU</th><th>Plant</th><th>Warehouse</th><th>Date</th><th>Ord</th><th>Ref</th><th>App</th><th>Supplier</th><th>Value (BDT)</th><th>GRN Qty</th><th>Exp Qty</th><th>GRN%</th>'
+    : '<th>PO#</th><th>SBU</th><th>Plant</th><th>Warehouse</th><th>Date</th><th>Ord</th><th>Ref</th><th>Adv%</th><th>App</th><th>Supplier</th><th>Value (BDT)</th><th>GRN Qty</th><th>Exp Qty</th><th>GRN%</th>';
+
+  var filterHtml = '<div class="filters"><label>Search:</label><input type="text" id="'+type+'Search" placeholder="PO number..." oninput="filterPO(\''+type+'\')">' +
+    '<label style="margin-left:6px">SBU:</label><select id="'+type+'Sbu" onchange="filterPO(\''+type+'\')"><option value="">All</option>'+sbus.map(s=>'<option value="'+s+'">'+s+'</option>').join('')+'</select>' +
+    '<label style="margin-left:6px">GRN:</label><select id="'+type+'Grn" onchange="filterPO(\''+type+'\')"><option value="">All</option><option value="done">Done</option><option value="pend">Pending</option></select>' +
+    '<span style="margin-left:auto;font-size:0.68rem;color:#94a3b8" id="'+type+'Count">'+data.length+' POs</span></div>';
+
+  document.getElementById('tab-'+type).innerHTML =
+    '<div class="section"><h2>'+(type==='all'?'All POs':type==='credit'?'Credit POs':'Cash/Advance POs')+'</h2>'+filterHtml+
+    '<div class="table-wrap"><table><thead><tr>'+cols+'</tr></thead><tbody id="'+type+'Body"></tbody></table></div>'+
+    '<div class="pagination" id="'+type+'Pager"></div></div>';
+  window['_'+type] = data;
+  window['_f'+type] = data;
+  page = 0;
+  renderPO(type);
+}
+
+function filterPO(type){
+  var data = window['_'+type];
+  var s = (document.getElementById(type+'Search').value||'').toLowerCase();
+  var sbu = document.getElementById(type+'Sbu').value;
+  var grn = document.getElementById(type+'Grn').value;
+  data = data.filter(p => {
+    if (s && !p.no.toLowerCase().includes(s)) return false;
+    if (sbu && p.sbu !== sbu) return false;
+    if (grn === 'done' && !(p.grnQty != null && p.grnQty !== 0)) return false;
+    if (grn === 'pend' && (p.grnQty != null && p.grnQty !== 0)) return false;
+    return true;
+  });
+  document.getElementById(type+'Count').textContent = data.length + ' POs';
+  window['_f'+type] = data;
+  page = 0;
+  renderPO(type);
+}
+
+function renderPO(type){
+  var data = window['_f'+type];
+  var totalPages = Math.ceil(data.length / pageSize);
+  if (page >= totalPages) page = totalPages - 1;
+  if (page < 0) page = 0;
+  var slice = data.slice(page*pageSize, (page+1)*pageSize);
+  var tbody = document.getElementById(type+'Body');
+
+  tbody.innerHTML = slice.map(p => {
+    var n = sbuNames[p.sbu] || p.sbu;
+    var eq = p.expectedQty != null ? p.expectedQty : '-';
+    var gq = p.grnQty != null ? p.grnQty : 0;
+    var pct = (eq !== '-' && eq > 0) ? Math.round(gq/eq*100) : 0;
+    var pc = pct >= 100 ? '#4ade80' : pct > 0 ? '#fbbf24' : '#f87171';
+    var pay = p.type === 'credit' ? '<span class="badge b-cre">Credit</span>' : p.type === 'cash' ? '<span class="badge b-csh">Cash</span>' : p.type;
+    var app = p.app ? '<span class="badge b-a">Yes</span>' : '<span class="badge b-p">No</span>';
+    var grnb = (gq != null && gq !== 0) ? '<span class="badge b-grn">Done</span>' : '<span class="badge b-nogrn">Pend</span>';
+    var val = p.totalAmount != null ? Number(p.totalAmount).toLocaleString() : '-';
+    var base = '<td><strong>'+p.no+'</strong></td><td>'+n+'</td><td>'+(p.plant||'')+'</td><td>'+(p.warehouse||'')+'</td><td>'+p.date+'</td><td>'+p.orderType+'</td><td>'+p.refType+'</td>';
+    if (type === 'all') return '<tr>'+base+'<td>'+pay+'</td><td>'+(p.adv||0)+'%</td><td>'+app+'</td><td>'+(p.supplier||'')+'</td><td>'+val+'</td><td>'+gq+'</td><td>'+eq+'</td><td style="color:'+pc+';font-weight:600">'+(eq!=='-'?pct+'%':'-')+'</td></tr>';
+    if (type === 'credit') return '<tr>'+base+'<td>'+app+'</td><td>'+(p.supplier||'')+'</td><td>'+val+'</td><td>'+gq+'</td><td>'+eq+'</td><td style="color:'+pc+';font-weight:600">'+(eq!=='-'?pct+'%':'-')+'</td></tr>';
+    return '<tr>'+base+'<td>'+(p.adv||0)+'%</td><td>'+app+'</td><td>'+(p.supplier||'')+'</td><td>'+val+'</td><td>'+gq+'</td><td>'+eq+'</td><td style="color:'+pc+';font-weight:600">'+(eq!=='-'?pct+'%':'-')+'</td></tr>';
+  }).join('');
+
+  var ph = '';
+  if (totalPages > 1) {
+    ph += '<button onclick="page=0;renderPO(\''+type+'\')">&#171;</button>';
+    ph += '<button onclick="page=Math.max(0,page-1);renderPO(\''+type+'\')">&#8249;</button>';
+    for (var i=Math.max(0,page-2); i<Math.min(totalPages,page+3); i++)
+      ph += '<button class="'+(i===page?'active':'')+'" onclick="page='+i+';renderPO(\''+type+'\')">'+(i+1)+'</button>';
+    ph += '<button onclick="page=Math.min(totalPages-1,page+1);renderPO(\''+type+'\')">&#8250;</button>';
+    ph += '<button onclick="page=totalPages-1;renderPO(\''+type+'\')">&#187;</button>';
+  }
+  ph += '<span class="info">Page '+(page+1)+' of '+totalPages+' ('+data.length+' rows)</span>';
+  document.getElementById(type+'Pager').innerHTML = ph;
+}
+
+function buildSBUTab(){
+  var html = '<div class="section"><h2>&#127970; SBU Summary ('+DATA.sbu.length+')</h2>'+
+    '<div class="table-wrap"><table><thead><tr><th>Code</th><th>SBU</th><th>Total</th><th>Credit</th><th>Cash</th><th>App</th><th>Pend</th><th>GRN Done</th><th>GRN Pend</th><th>GRN%</th></tr></thead><tbody>';
+  html += DATA.sbu.map(s => {
+    var ap = s.approved || 0;
+    var pct = ap > 0 ? Math.round(s.grnDone/ap*100) : 0;
+    var c = pct >= 90 ? '#4ade80' : pct >= 70 ? '#38bdf8' : pct >= 50 ? '#fbbf24' : '#f87171';
+    return '<tr><td><strong>'+s.code+'</strong></td><td>'+s.name+'</td><td>'+s.total+'</td><td>'+s.credit+'</td><td>'+s.cash+'</td><td>'+s.approved+'</td><td>'+(s.pending>0?s.pending:'-')+'</td><td>'+s.grnDone+'</td><td>'+(s.grnPend>0?'<span style="color:#f87171">'+s.grnPend+'</span>':'-')+'</td><td style="color:'+c+';font-weight:600">'+pct+'%</td></tr>';
+  }).join('');
+  html += '</tbody></table></div></div>';
+  document.getElementById('tab-sbu').innerHTML = html;
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tab[data-tab="'+name+'"]').classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', function(){ switchTab(this.dataset.tab); }));
+load();
+</script>
+</body>
+</html>
